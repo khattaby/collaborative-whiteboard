@@ -2,20 +2,49 @@ import { auth, signOut } from "@/auth";
 import { prisma } from "@/auth";
 import Link from "next/link";
 import Image from "next/image";
+import NotificationDropdown from "./NotificationDropdown";
 
 export default async function NavBar() {
   const session = await auth();
   let userImage = session?.user?.image;
   let userName = session?.user?.name;
+  let pendingRequests: any[] = [];
+  let pendingSessionInvites: any[] = [];
 
   if (session?.user?.email) {
     const dbUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { image: true, name: true },
+      select: {
+        id: true,
+        image: true,
+        name: true,
+        receivedFriendRequests: {
+          where: { status: "PENDING" },
+          include: {
+            sender: {
+              select: { id: true, name: true, email: true, image: true },
+            },
+          },
+        },
+        joinedSessions: {
+          where: { status: "PENDING" },
+          include: {
+            session: {
+              include: {
+                creator: {
+                  select: { id: true, name: true, email: true, image: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
     if (dbUser) {
       userImage = dbUser.image;
       userName = dbUser.name;
+      pendingRequests = dbUser.receivedFriendRequests;
+      pendingSessionInvites = dbUser.joinedSessions;
     }
   }
 
@@ -42,6 +71,11 @@ export default async function NavBar() {
           <div className="flex items-center space-x-4">
             {session?.user ? (
               <>
+                <NotificationDropdown
+                  requests={pendingRequests}
+                  sessionInvites={pendingSessionInvites}
+                  userId={session.user.id}
+                />
                 <div className="flex items-center gap-3 pl-4 border-l border-green-200">
                   <Link
                     href="/profile"

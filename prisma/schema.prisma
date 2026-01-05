@@ -16,6 +16,41 @@ model User {
   hashedPassword String?
   accounts      Account[]
   sessions      Session[]
+
+  // Friend relations
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  
+  friends     Friendship[] @relation("UserFriends")
+  friendOf    Friendship[] @relation("UserFriendOf")
+
+  createdSessions WhiteboardSession[] @relation("CreatedSessions")
+  joinedSessions  WhiteboardSessionParticipant[]
+}
+
+model FriendRequest {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt  DateTime @default(now())
+  
+  sender     User     @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
+  friend    User     @relation("UserFriendOf", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
 }
  
 model Account {
@@ -44,7 +79,32 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
- 
+
+model WhiteboardSession {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  creatorId String
+  data      Json?    // Store canvas elements
+  
+  creator   User     @relation("CreatedSessions", fields: [creatorId], references: [id], onDelete: Cascade)
+  participants WhiteboardSessionParticipant[]
+}
+
+model WhiteboardSessionParticipant {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  joinedAt  DateTime @default(now())
+
+  session   WhiteboardSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+}
+
 model VerificationToken {
   identifier String
   token      String
