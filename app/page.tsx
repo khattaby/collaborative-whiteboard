@@ -207,20 +207,20 @@ export default function Whiteboard() {
   };
 
   return (
-    <div className="w-screen h-screen bg-gray-100 p-8 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 top-16 w-full h-[calc(100vh-4rem)] bg-green-50 p-4 sm:p-6 flex flex-col overflow-hidden">
       {/* Title */}
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+      <div className="flex-none mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-green-900 flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-green-600"></span>
           Infinite Canvas
         </h1>
-        <div className="text-sm text-gray-500">Auto-saved</div>
+        <div className="text-sm text-green-700">Auto-saved</div>
       </div>
 
       {/* Frame Container */}
       <div
         ref={containerRef}
-        className="flex-1 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden relative"
+        className="flex-1 bg-white rounded-2xl shadow-xl border border-green-200 overflow-hidden relative"
       >
         <canvas
           ref={canvasRef}
@@ -233,13 +233,13 @@ export default function Whiteboard() {
         />
 
         {/* Minimal Floating Toolbar (Inside Frame) */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur shadow-md border border-gray-200 rounded-full px-4 py-2 flex gap-4">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur shadow-md border border-green-200 rounded-full px-4 py-2 flex gap-4">
           <button
             onClick={() => setTool("pen")}
             className={`p-2 rounded-full transition-colors ${
               tool === "pen"
-                ? "bg-blue-100 text-blue-600"
-                : "text-gray-600 hover:bg-gray-100"
+                ? "bg-green-100 text-green-700"
+                : "text-green-800 hover:bg-green-50"
             }`}
             title="Pen"
           >
@@ -262,8 +262,8 @@ export default function Whiteboard() {
             onClick={() => setTool("hand")}
             className={`p-2 rounded-full transition-colors ${
               tool === "hand"
-                ? "bg-blue-100 text-blue-600"
-                : "text-gray-600 hover:bg-gray-100"
+                ? "bg-green-100 text-green-700"
+                : "text-green-800 hover:bg-green-50"
             }`}
             title="Hand (Pan)"
           >
@@ -284,7 +284,7 @@ export default function Whiteboard() {
               <path d="M6 11.5V14c0 3 2.5 5 5 5h7.5c2.5 0 5-2.5 5-5v-3.5" />
             </svg>
           </button>
-          <div className="w-px h-8 bg-gray-200 mx-1 self-center"></div>
+          <div className="w-px h-8 bg-green-200 mx-1 self-center"></div>
           <button
             onClick={() => setStrokes([])}
             className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors"
@@ -308,7 +308,7 @@ export default function Whiteboard() {
           </button>
         </div>
 
-        <div className="absolute bottom-4 left-4 text-xs text-gray-400 pointer-events-none select-none">
+        <div className="absolute bottom-4 left-4 text-xs text-green-400 pointer-events-none select-none">
           Scroll to zoom • Drag to pan (Hand)
         </div>
       </div>
