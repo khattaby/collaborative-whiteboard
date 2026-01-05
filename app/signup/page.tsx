@@ -45,7 +45,7 @@ export default async function Page() {
                 // so that Next.js can handle the redirect
                 if (
                   error instanceof Error &&
-                  error.message === "NEXT_REDIRECT"
+                  error.message.includes("NEXT_REDIRECT")
                 ) {
                   throw error;
                 }
