@@ -1,13 +1,14 @@
 const { Server } = require("socket.io");
 
-const io = new Server(3001, {
+const port = process.env.PORT || 3001;
+const io = new Server(port, {
   cors: {
     origin: "*", // Allow all origins for dev simplicity
     methods: ["GET", "POST"],
   },
 });
 
-console.log("Socket.io server running on port 3001");
+console.log(`Socket.io server running on port ${port}`);
 
 // In-memory storage for the whiteboard state per session
 // Key: sessionId (or "global"), Value: Stroke[]

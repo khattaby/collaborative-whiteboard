@@ -403,7 +403,9 @@ export default function Whiteboard({
 
   // Setup Socket Connection
   useEffect(() => {
-    const url = `http://${window.location.hostname}:3001`;
+    const url =
+      process.env.NEXT_PUBLIC_SOCKET_URL ||
+      `http://${window.location.hostname}:3001`;
     const socket = io(url, {
       query: {
         sessionId,

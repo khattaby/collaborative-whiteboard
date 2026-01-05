@@ -37,7 +37,9 @@ export default function FriendListSidebar({
   useEffect(() => {
     if (!currentUserId) return;
 
-    const url = `http://${window.location.hostname}:3001`;
+    const url =
+      process.env.NEXT_PUBLIC_SOCKET_URL ||
+      `http://${window.location.hostname}:3001`;
     const newSocket = io(url, {
       query: { userId: currentUserId },
     });
