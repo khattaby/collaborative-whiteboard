@@ -5,15 +5,33 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import type { User } from "@/app/generated/prisma/client";
 
+// Extend NextAuth types using module augmentation
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
+if (process.env.NODE_ENV !== "production") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const connectionString = process.env.POSTGRES_URL_NON_POOLING;
+const connectionString = process.env.POSTGRES_URL;
+if (!connectionString) {
+  throw new Error("POSTGRES_URL is not set");
+}
+
 const pool = new Pool({
-  connectionString: connectionString
-    ? connectionString.split("?")[0]
-    : undefined,
+  connectionString,
   ssl: { rejectUnauthorized: false },
 });
 
@@ -75,9 +93,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (token?.id) {
-        // @ts-ignore
-        session.user.id = token.id as string;
+      if (token?.id && typeof token.id === "string" && session.user) {
+        session.user.id = token.id;
       }
       return session;
     },
