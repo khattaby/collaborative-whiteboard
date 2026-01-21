@@ -65,7 +65,7 @@ export default function NotificationDropdown({
   useEffect(() => {
     if (!userId) return;
 
-    const url = `http://${window.location.hostname}:3001`;
+    const url = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin;
     const socket = io(url, { query: { userId } });
     socketRef.current = socket;
 

@@ -21,7 +21,7 @@ export default function CreateSessionForm({
   useEffect(() => {
     if (state?.success) {
       // Connect to socket and emit invite
-      const url = `http://${window.location.hostname}:3001`;
+      const url = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin;
       const socket = io(url);
 
       socket.emit("send-invite", {
