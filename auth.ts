@@ -2,8 +2,8 @@ import NextAuth from "next-auth";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaClient } from "@/app/generated/prisma/client";
-import type { User } from "@/app/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
+import type { User } from "@prisma/client";
 
 // Extend NextAuth types using module augmentation
 declare module "next-auth" {
