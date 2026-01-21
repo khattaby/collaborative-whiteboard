@@ -4,12 +4,15 @@ import Whiteboard from "@/components/Whiteboard";
 import FriendListSidebar from "@/components/FriendListSidebar";
 import CreateSessionForm from "@/components/CreateSessionForm";
 import SessionDashboard from "@/components/SessionDashboard";
+import type { Friend } from "@/lib/whiteboard/types";
 import {
   getSessionDetails,
   acceptSessionInvite,
   rejectSessionInvite,
 } from "@/app/actions/session-actions";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import type { Session } from "next-auth";
 
 export const runtime = "nodejs";
 
@@ -22,10 +25,15 @@ export default async function Home({
     viewOnly?: string;
   }>;
 }) {
-  const session = await auth();
+  let session: Session | null = null;
+  try {
+    session = await auth();
+  } catch {
+    session = null;
+  }
   const { sessionId, create, viewOnly } = await searchParams;
 
-  let friends: any[] = [];
+  let friends: { friend: Friend }[] = [];
 
   if (session?.user?.email) {
     const user = await prisma.user.findUnique({
@@ -60,18 +68,18 @@ export default async function Home({
             infinite canvas.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
+            <Link
               href="/signup"
               className="px-8 py-3 bg-green-600 text-white rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors shadow-lg hover:shadow-xl"
             >
               Get Started for Free
-            </a>
-            <a
+            </Link>
+            <Link
               href="/signin"
               className="px-8 py-3 bg-white text-green-700 border-2 border-green-600 rounded-lg font-semibold text-lg hover:bg-green-50 transition-colors"
             >
               Sign In
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -128,12 +136,12 @@ export default async function Home({
             The session you are looking for does not exist or you do not have
             permission to access it.
           </p>
-          <a
+          <Link
             href="/"
             className="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
             Go Home
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -152,18 +160,18 @@ export default async function Home({
             read-only mode.
           </p>
           <div className="flex gap-4 justify-center">
-            <a
+            <Link
               href={`/?sessionId=${sessionId}&viewOnly=true`}
               className="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
             >
               View Session
-            </a>
-            <a
+            </Link>
+            <Link
               href="/"
               className="inline-block bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
             >
               Go Home
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -171,7 +179,7 @@ export default async function Home({
   }
 
   // If user has not accepted the invite yet
-  if ((whiteboardSession as any).isPending) {
+  if (whiteboardSession.isPending) {
     return (
       <div className="fixed inset-0 top-16 w-full h-[calc(100vh-4rem)] bg-green-50 flex items-center justify-center">
         <div className="text-center p-8 bg-white rounded-xl shadow-lg max-w-md mx-4 border border-green-100">
@@ -195,7 +203,7 @@ export default async function Home({
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Join "{whiteboardSession.name}"?
+            Join &quot;{whiteboardSession.name}&quot;?
           </h2>
           <p className="text-gray-600 mb-8">
             You have been invited to join this brainstorming session. Please
@@ -246,12 +254,10 @@ export default async function Home({
           creatorId={whiteboardSession?.creatorId}
           friends={friends}
           viewOnly={viewOnly === "true"}
-          initialParticipants={
-            whiteboardSession?.participants
-              .filter((p: any) => p.status === "ACCEPTED")
-              .map((p: any) => p.user) || []
-          }
-          initialElements={(whiteboardSession as any).data || []}
+          initialParticipants={whiteboardSession.participants
+            .filter((p) => p.status === "ACCEPTED")
+            .map((p) => p.user)}
+          initialElements={whiteboardSession.data || []}
         />
       </div>
       <div className="flex-none h-full">

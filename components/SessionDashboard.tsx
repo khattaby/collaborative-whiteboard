@@ -3,6 +3,19 @@ import Link from "next/link";
 import { Calendar, Clock, User, Plus, Users } from "lucide-react";
 import DeleteSessionButton from "./DeleteSessionButton";
 
+interface DashboardSession {
+  id: string;
+  name: string;
+  createdAt: Date;
+  isActive: boolean;
+  role: string;
+  status: string;
+  creator?: {
+    name: string | null;
+    image: string | null;
+  };
+}
+
 export default async function SessionDashboard() {
   let result;
 
@@ -108,7 +121,7 @@ function SessionCard({
   session,
   ended = false,
 }: {
-  session: any;
+  session: DashboardSession;
   ended?: boolean;
 }) {
   const createdDate = new Date(session.createdAt).toLocaleDateString();
@@ -116,8 +129,6 @@ function SessionCard({
     hour: "2-digit",
     minute: "2-digit",
   });
-
-  const roleText = session.role === "creator" ? "Creator" : "Participant";
   const statusText = session.status === "PENDING" ? "Pending" : "Active";
 
   return (

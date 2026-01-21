@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node socket-server.js",
     "build": "next build",
-    "start": "next start",
+    "start": "node socket-server.js",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },

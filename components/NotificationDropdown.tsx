@@ -9,9 +9,8 @@ import {
   acceptSessionInvite,
   rejectSessionInvite,
 } from "@/app/actions/session-actions";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 
 type FriendRequest = {
   id: string;
@@ -50,7 +49,7 @@ export default function NotificationDropdown({
   const [friendRequests, setFriendRequests] =
     useState<FriendRequest[]>(requests);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const socketRef = useRef<any>(null);
+  const socketRef = useRef<Socket | null>(null);
   const router = useRouter();
 
   // Update states when props change
@@ -74,11 +73,12 @@ export default function NotificationDropdown({
       console.log("Notification socket connected");
     });
 
-    socket.on("new-invite", (data: { session: any }) => {
+    socket.on("new-invite", (data: { session: SessionInvite["session"] }) => {
       console.log("Received new invite:", data);
       setInvites((prev) => {
-        // Avoid duplicates
-        if (prev.some((inv) => inv.session.id === data.session.id)) return prev;
+        if (prev.some((inv) => inv.session.id === data.session.id)) {
+          return prev;
+        }
         return [...prev, { session: data.session }];
       });
     });
@@ -231,7 +231,7 @@ export default function NotificationDropdown({
                               </span>{" "}
                               invited you to{" "}
                               <span className="text-green-600">
-                                "{invite.session.name}"
+                                &quot;{invite.session.name}&quot;
                               </span>
                             </p>
                             <div className="mt-2 flex gap-2">

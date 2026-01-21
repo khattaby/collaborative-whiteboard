@@ -1,15 +1,35 @@
 import { auth, signIn } from "@/auth";
 export const runtime = "nodejs";
 import { prisma } from "@/auth";
+import type { Session } from "next-auth";
+import { redirect } from "next/navigation";
 
-export default async function Page() {
-  const session = await auth();
+export default async function Page(props: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const searchParams = await props.searchParams;
+  let session: Session | null = null;
+  try {
+    session = await auth();
+  } catch {
+    session = null;
+  }
   return (
     <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-green-50 overflow-hidden">
       <div className="w-full max-w-sm rounded-2xl border border-green-100 bg-white p-6 shadow-lg">
         <h1 className="text-xl font-semibold mb-4 text-green-900">
           Create Account
         </h1>
+        {searchParams?.error === "DatabaseUnavailable" && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+            Database connection failed. Check DATABASE_URL and try again.
+          </div>
+        )}
+        {searchParams?.error === "SignInFailed" && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+            Sign in failed. Please try again.
+          </div>
+        )}
         {!session ? (
           <form
             action={async (formData) => {
@@ -20,6 +40,7 @@ export default async function Page() {
               if (!email || !password) return;
               const { hash } = await import("bcryptjs");
               const hashedPassword = await hash(password, 10);
+              let didUpsert = false;
               try {
                 console.log("Attempting to create/update user:", email);
                 const user = await prisma.user.upsert({
@@ -31,8 +52,13 @@ export default async function Page() {
                   },
                 });
                 console.log("User upserted successfully:", user.id);
+                didUpsert = true;
               } catch (error) {
                 console.error("Error creating user:", error);
+                redirect("/signup?error=DatabaseUnavailable");
+              }
+              if (!didUpsert) {
+                redirect("/signup?error=DatabaseUnavailable");
               }
               try {
                 await signIn("credentials", {
@@ -41,18 +67,13 @@ export default async function Page() {
                   redirectTo: "/",
                 });
               } catch (error) {
-                // If the error is a NEXT_REDIRECT, we should rethrow it
-                // so that Next.js can handle the redirect
                 if (
                   error instanceof Error &&
                   error.message.includes("NEXT_REDIRECT")
                 ) {
                   throw error;
                 }
-                // For other errors, we might want to log them or show them to the user
-                // but for now we'll just rethrow only redirect errors
-                // Actually, NextAuth throws a specific error for redirect that we must rethrow
-                throw error;
+                redirect("/signup?error=SignInFailed");
               }
             }}
             className="space-y-3"

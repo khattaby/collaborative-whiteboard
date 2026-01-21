@@ -25,9 +25,14 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const connectionString = process.env.POSTGRES_URL;
+const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error("POSTGRES_URL is not set");
+  throw new Error("DATABASE_URL is not set");
+}
+
+const authSecret = process.env.AUTH_SECRET;
+if (!authSecret) {
+  throw new Error("AUTH_SECRET is not set");
 }
 
 const pool = new Pool({
@@ -45,7 +50,16 @@ export const prisma = prismaClient;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
+  secret: authSecret,
   trustHost: true,
+  logger: {
+    error(error) {
+      if (error?.name === "JWTSessionError") {
+        return;
+      }
+      console.error("[auth][error]", error);
+    },
+  },
   providers: [
     Credentials({
       name: "Credentials",

@@ -2,8 +2,9 @@
 
 import { useActionState, useEffect } from "react";
 import { sendFriendRequest } from "./friends-actions";
+import type { Socket } from "socket.io-client";
 
-export default function AddFriendForm({ socket }: { socket?: any }) {
+export default function AddFriendForm({ socket }: { socket?: Socket | null }) {
   const [state, action, isPending] = useActionState(sendFriendRequest, null);
 
   useEffect(() => {

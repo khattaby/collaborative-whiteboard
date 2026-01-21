@@ -1,5 +1,6 @@
 import { auth, signIn, signOut } from "@/auth";
 import { redirect } from "next/navigation";
+import type { Session } from "next-auth";
 
 export const runtime = "nodejs";
 
@@ -7,7 +8,12 @@ export default async function Page(props: {
   searchParams: Promise<{ error?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const session = await auth();
+  let session: Session | null = null;
+  try {
+    session = await auth();
+  } catch {
+    session = null;
+  }
   return (
     <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-green-50 overflow-hidden">
       <div className="w-full max-w-sm rounded-2xl border border-green-100 bg-white p-6 shadow-lg">

@@ -10,6 +10,11 @@ import {
   inviteUsersSchema,
   canvasElementsArraySchema,
 } from "@/lib/validations/session";
+import type {
+  SessionParticipant,
+  SessionUser,
+  WhiteboardSessionData,
+} from "@/lib/whiteboard/types";
 
 // ============================================
 // Type Definitions
@@ -94,7 +99,10 @@ export async function createSession(
         participants: {
           create: [
             { userId: user.id, status: "ACCEPTED" },
-            ...invitedFriendIds.map((fid) => ({ userId: fid, status: "PENDING" })),
+            ...invitedFriendIds.map((fid) => ({
+              userId: fid,
+              status: "PENDING",
+            })),
           ],
         },
       },
@@ -456,6 +464,14 @@ export async function getSessionDetails(sessionId: string) {
     const whiteboardSession = await prisma.whiteboardSession.findUnique({
       where: { id: sessionId },
       include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
         participants: {
           include: {
             user: {
@@ -479,11 +495,55 @@ export async function getSessionDetails(sessionId: string) {
 
     if (!participant) return null;
 
-    if (participant.status !== "ACCEPTED") {
-      return { ...whiteboardSession, isPending: true };
-    }
+    const normalizedParticipants: SessionParticipant[] =
+      whiteboardSession.participants.map((p) => {
+        const status: SessionParticipant["status"] =
+          p.status === "ACCEPTED" ||
+          p.status === "REJECTED" ||
+          p.status === "PENDING"
+            ? p.status
+            : "PENDING";
+        const normalizedUser: SessionUser = {
+          id: p.user.id,
+          name: p.user.name,
+          email: p.user.email,
+          image: p.user.image,
+        };
+        return {
+          id: p.id,
+          userId: p.userId,
+          status,
+          user: normalizedUser,
+        };
+      });
 
-    return whiteboardSession;
+    const creator: SessionUser = {
+      id: whiteboardSession.creator.id,
+      name: whiteboardSession.creator.name,
+      email: whiteboardSession.creator.email,
+      image: whiteboardSession.creator.image,
+    };
+
+    const rawData = whiteboardSession.data;
+    const dataParse =
+      rawData == null
+        ? { success: true as const, data: [] }
+        : canvasElementsArraySchema.safeParse(rawData);
+    const data = dataParse.success ? dataParse.data : [];
+
+    const result: WhiteboardSessionData & { isPending: boolean } = {
+      id: whiteboardSession.id,
+      name: whiteboardSession.name,
+      isActive: whiteboardSession.isActive,
+      createdAt: whiteboardSession.createdAt,
+      creatorId: whiteboardSession.creatorId,
+      creator,
+      participants: normalizedParticipants,
+      data,
+      isPending: participant.status !== "ACCEPTED",
+    };
+
+    return result;
   } catch (e) {
     console.error("Failed to get session details:", e);
     return null;
@@ -575,7 +635,7 @@ export async function saveSessionData(
     await prisma.whiteboardSession.update({
       where: { id: sessionId },
       data: {
-        data: elements as any,
+        data: elements as z.infer<typeof canvasElementsArraySchema>,
       },
     });
 

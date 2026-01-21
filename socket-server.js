@@ -1,25 +1,17 @@
 const { Server } = require("socket.io");
+const next = require("next");
+const http = require("http");
+const { parse } = require("url");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
-const port = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const port = process.env.PORT || 3000;
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
-// Parse allowed origins from environment variable
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
-  : ["http://localhost:3000"];
-
-const io = new Server(port, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
-});
-
-console.log(`Socket.io server running on port ${port}`);
-console.log(`Allowed origins: ${allowedOrigins.join(", ")}`);
+  : null;
 
 // In-memory storage for the whiteboard state per session
 // Key: sessionId, Value: CanvasElement[]
@@ -65,38 +57,73 @@ function checkRateLimit(userId) {
   return true;
 }
 
-// Middleware for authentication (optional - doesn't block unauthenticated connections for backwards compatibility)
-io.use((socket, next) => {
-  const token = socket.handshake.query.token;
-  const userId = socket.handshake.query.userId;
+const dev = process.env.NODE_ENV !== "production";
+const app = next({ dev });
+const handle = app.getRequestHandler();
 
-  if (token) {
-    const decoded = verifyToken(token);
-    if (decoded) {
-      socket.user = decoded;
-      socket.authenticated = true;
+app.prepare().then(() => {
+  const server = http.createServer((req, res) => {
+    handle(req, res, parse(req.url, true));
+  });
+
+  const io = new Server(server, {
+    cors: {
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins) {
+          if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+          }
+          return callback(new Error("Origin not allowed"), false);
+        }
+
+        return callback(null, true);
+      },
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
+  });
+
+  server.listen(port, () => {
+    console.log(`App + Socket.IO server running on port ${port}`);
+    console.log(
+      `Allowed origins: ${allowedOrigins ? allowedOrigins.join(", ") : "(all)"}`,
+    );
+  });
+
+  // Middleware for authentication (optional - doesn't block unauthenticated connections for backwards compatibility)
+  io.use((socket, next) => {
+    const token = socket.handshake.query.token;
+    const userId = socket.handshake.query.userId;
+
+    if (token) {
+      const decoded = verifyToken(token);
+      if (decoded) {
+        socket.user = decoded;
+        socket.authenticated = true;
+      } else {
+        console.log(`Invalid token for socket ${socket.id}`);
+        socket.authenticated = false;
+      }
     } else {
-      console.log(`Invalid token for socket ${socket.id}`);
+      // Allow unauthenticated connections but mark them
       socket.authenticated = false;
     }
-  } else {
-    // Allow unauthenticated connections but mark them
-    socket.authenticated = false;
-  }
 
-  // Store userId from query (for backwards compatibility)
-  socket.userId = socket.user?.userId || userId;
+    // Store userId from query (for backwards compatibility)
+    socket.userId = socket.user?.userId || userId;
 
-  next();
-});
+    next();
+  });
 
-io.on("connection", (socket) => {
-  const sessionId = socket.handshake.query.sessionId;
-  const userId = socket.userId;
+  io.on("connection", (socket) => {
+    const sessionId = socket.handshake.query.sessionId;
+    const userId = socket.userId;
 
   if (userId) {
     console.log(
-      `User connected: ${socket.id} | userId: ${userId} | authenticated: ${socket.authenticated}`
+      `User connected: ${socket.id} | userId: ${userId} | authenticated: ${socket.authenticated}`,
     );
     socket.join(`user:${userId}`);
   }
@@ -129,7 +156,7 @@ io.on("connection", (socket) => {
     if (!userId || !checkRateLimit(userId)) return;
 
     console.log(
-      `Sending invites to: ${toUserIds.join(", ")} for session: ${session.name}`
+      `Sending invites to: ${toUserIds.join(", ")} for session: ${session.name}`,
     );
     toUserIds.forEach((id) => {
       io.to(`user:${id}`).emit("new-invite", { session });
@@ -186,8 +213,14 @@ io.on("connection", (socket) => {
       return;
     }
 
-    sessions[sessionId].push(element);
-    socket.to(sessionId).emit("element-added", element);
+    const index = sessions[sessionId].findIndex((el) => el.id === element.id);
+    if (index === -1) {
+      sessions[sessionId].push(element);
+      socket.to(sessionId).emit("element-added", element);
+    } else {
+      sessions[sessionId][index] = element;
+      socket.to(sessionId).emit("element-updated", element);
+    }
   });
 
   socket.on("update-element", (element) => {
@@ -197,10 +230,14 @@ io.on("connection", (socket) => {
     if (!element || !element.id) return;
 
     const index = sessions[sessionId].findIndex((el) => el.id === element.id);
-    if (index !== -1) {
-      sessions[sessionId][index] = element;
+    if (index === -1) {
+      sessions[sessionId].push(element);
       socket.to(sessionId).emit("element-updated", element);
+      return;
     }
+
+    sessions[sessionId][index] = element;
+    socket.to(sessionId).emit("element-updated", element);
   });
 
   socket.on("undo-element", (targetUserId) => {
@@ -236,12 +273,14 @@ io.on("connection", (socket) => {
 
     // Only allow deletion of own elements (or by session creator - handled client-side)
     if (element && element.userId !== userId) {
-      console.log(`User ${userId} tried to delete element owned by ${element.userId}`);
+      console.log(
+        `User ${userId} tried to delete element owned by ${element.userId}`,
+      );
       // Allow for now but log - proper authorization should check creator status
     }
 
     sessions[sessionId] = sessions[sessionId].filter(
-      (el) => el.id !== elementId
+      (el) => el.id !== elementId,
     );
     io.to(sessionId).emit("element-deleted", elementId);
   });
@@ -258,12 +297,20 @@ io.on("connection", (socket) => {
 
     const initialLength = sessions[sessionId].length;
     sessions[sessionId] = sessions[sessionId].filter(
-      (s) => s.userId !== targetUserId
+      (s) => s.userId !== targetUserId,
     );
 
     if (sessions[sessionId].length !== initialLength) {
       io.to(sessionId).emit("elements-update", sessions[sessionId]);
     }
+  });
+
+  socket.on("clear-canvas", () => {
+    if (!sessionId || !sessions[sessionId]) return;
+    if (!checkRateLimit(userId)) return;
+
+    sessions[sessionId] = [];
+    io.to(sessionId).emit("elements-update", []);
   });
 
   socket.on("session-ended", ({ sessionId: endedSessionId }) => {
@@ -279,22 +326,27 @@ io.on("connection", (socket) => {
     delete sessionParticipants[endedSessionId];
   });
 
-  socket.on("kick-user", ({ userId: kickedUserId, sessionId: targetSessionId }) => {
-    if (!targetSessionId || !kickedUserId) return;
-    if (!checkRateLimit(userId)) return;
+  socket.on(
+    "kick-user",
+    ({ userId: kickedUserId, sessionId: targetSessionId }) => {
+      if (!targetSessionId || !kickedUserId) return;
+      if (!checkRateLimit(userId)) return;
 
-    console.log(`User ${kickedUserId} kicked from session ${targetSessionId}`);
+      console.log(
+        `User ${kickedUserId} kicked from session ${targetSessionId}`,
+      );
 
-    // Remove from participants
-    if (sessionParticipants[targetSessionId]) {
-      sessionParticipants[targetSessionId].delete(kickedUserId);
-    }
-    if (activeUsers[targetSessionId]) {
-      activeUsers[targetSessionId].delete(kickedUserId);
-    }
+      // Remove from participants
+      if (sessionParticipants[targetSessionId]) {
+        sessionParticipants[targetSessionId].delete(kickedUserId);
+      }
+      if (activeUsers[targetSessionId]) {
+        activeUsers[targetSessionId].delete(kickedUserId);
+      }
 
-    io.to(targetSessionId).emit("user-kicked", { userId: kickedUserId });
-  });
+      io.to(targetSessionId).emit("user-kicked", { userId: kickedUserId });
+    },
+  );
 
   socket.on("user-left", ({ userId: leftUserId, sessionId: leftSessionId }) => {
     if (!leftSessionId || !leftUserId) return;
@@ -342,7 +394,7 @@ io.on("connection", (socket) => {
       // Check if user has other active sockets in this session
       const sockets = await io.in(sessionId).fetchSockets();
       const isStillOnline = sockets.some(
-        (s) => s.handshake.query.userId === userId || s.userId === userId
+        (s) => s.handshake.query.userId === userId || s.userId === userId,
       );
 
       if (!isStillOnline) {
@@ -355,6 +407,7 @@ io.on("connection", (socket) => {
         });
       }
     }
+  });
   });
 });
 

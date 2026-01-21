@@ -4,13 +4,14 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddFriendForm from "../app/profile/AddFriendForm";
 import { removeFriend } from "../app/profile/friends-actions";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
+import type { Friend } from "@/lib/whiteboard/types";
 
-type Friend = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  image: string | null;
+type FriendRequestAcceptedPayload = {
+  friend?: Friend;
+  friendship?: {
+    friend: Friend;
+  };
 };
 
 type FriendListSidebarProps = {
@@ -26,7 +27,7 @@ export default function FriendListSidebar({
 }: FriendListSidebarProps) {
   const router = useRouter();
   const [friends, setFriends] = useState(initialFriends);
-  const [socket, setSocket] = useState<any>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   // Sync with prop changes
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function FriendListSidebar({
 
     const url =
       process.env.NEXT_PUBLIC_SOCKET_URL ||
-      `http://${window.location.hostname}:3001`;
+      window.location.origin;
     const newSocket = io(url, {
       query: { userId: currentUserId },
     });
@@ -49,20 +50,22 @@ export default function FriendListSidebar({
       console.log("FriendListSidebar connected to socket");
     });
 
-    newSocket.on("friend-request-accepted", (data: any) => {
-      console.log("Friend request accepted event received", data);
-      const newFriend = data?.friend || data?.friendship?.friend;
+    newSocket.on(
+      "friend-request-accepted",
+      (data: FriendRequestAcceptedPayload) => {
+        console.log("Friend request accepted event received", data);
+        const newFriend = data?.friend || data?.friendship?.friend;
 
-      if (newFriend) {
-        setFriends((prev) => {
-          // Check if already exists
-          if (prev.some((f) => f.friend.id === newFriend.id)) {
-            return prev;
-          }
-          return [...prev, { friend: newFriend }];
-        });
+        if (newFriend) {
+          setFriends((prev) => {
+            if (prev.some((f) => f.friend.id === newFriend.id)) {
+              return prev;
+            }
+            return [...prev, { friend: newFriend }];
+          });
+        }
       }
-    });
+    );
 
     newSocket.on(
       "friend-removed",

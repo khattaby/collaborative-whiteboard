@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, useState } from "react";
 import type { ToolType } from "@/lib/whiteboard/types";
 import {
     Hand,
@@ -15,6 +15,7 @@ import {
     StickyNote,
     Eraser,
     MousePointer2,
+    SlidersHorizontal,
 } from "lucide-react";
 
 interface ToolbarProps {
@@ -62,94 +63,123 @@ export function Toolbar({
     onSizeChange,
     viewOnly = false,
 }: ToolbarProps) {
-    if (viewOnly) {
-        return (
-            <div className="absolute top-20 left-4 bg-white rounded-xl shadow-lg border border-gray-200 p-2">
-                <div className="flex flex-col gap-1">
-                    {TOOLS.filter((t) => t.type === "pan" || t.type === "select").map(
-                        ({ type, icon, label }) => (
-                            <button
-                                key={type}
-                                onClick={() => onToolChange(type)}
-                                className={`p-2.5 rounded-lg transition-all duration-150 ${tool === type
-                                        ? "bg-green-100 text-green-700 shadow-sm"
-                                        : "hover:bg-gray-100 text-gray-600"
-                                    }`}
-                                title={label}
-                            >
-                                {icon}
-                            </button>
-                        )
-                    )}
-                </div>
-            </div>
-        );
-    }
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    const visibleTools = useMemo(() => {
+        if (viewOnly) {
+            return TOOLS.filter((t) => t.type === "pan" || t.type === "select");
+        }
+        return TOOLS;
+    }, [viewOnly]);
 
     return (
-        <div className="absolute top-20 left-4 bg-white rounded-xl shadow-lg border border-gray-200 p-2">
-            {/* Tools */}
-            <div className="flex flex-col gap-1">
-                {TOOLS.map(({ type, icon, label }) => (
-                    <button
-                        key={type}
-                        onClick={() => onToolChange(type)}
-                        className={`p-2.5 rounded-lg transition-all duration-150 ${tool === type
-                                ? "bg-green-100 text-green-700 shadow-sm"
-                                : "hover:bg-gray-100 text-gray-600"
-                            }`}
-                        title={label}
-                    >
-                        {icon}
-                    </button>
-                ))}
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-gray-200 my-2" />
-
-            {/* Color Picker */}
-            <div className="flex flex-col gap-1 items-center">
-                <div className="grid grid-cols-2 gap-1">
-                    {PRESET_COLORS.map((presetColor) => (
-                        <button
-                            key={presetColor}
-                            onClick={() => onColorChange(presetColor)}
-                            className={`w-5 h-5 rounded-full transition-all ${color === presetColor
-                                    ? "ring-2 ring-offset-1 ring-green-500"
-                                    : "hover:scale-110"
-                                }`}
-                            style={{ backgroundColor: presetColor }}
-                            title={presetColor}
-                        />
-                    ))}
+        <div className="absolute top-24 left-6 z-40">
+            <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                <div className="p-2">
+                    <div className="grid grid-cols-2 gap-1.5">
+                        {visibleTools.map(({ type, icon, label }) => {
+                            const isActive = tool === type;
+                            return (
+                                <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => onToolChange(type)}
+                                    className={[
+                                        "h-10 w-10 rounded-xl flex items-center justify-center transition-all",
+                                        isActive
+                                            ? "bg-green-100 text-green-700 ring-1 ring-green-200 shadow-sm"
+                                            : "text-gray-700 hover:bg-gray-100",
+                                    ].join(" ")}
+                                    title={label}
+                                    aria-label={label}
+                                >
+                                    {icon}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
-                {/* Custom Color */}
-                <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => onColorChange(e.target.value)}
-                    className="w-8 h-8 cursor-pointer rounded border-0 p-0"
-                    title="Custom color"
-                />
-            </div>
+                {!viewOnly && (
+                    <>
+                        <div className="h-px bg-gray-200" />
 
-            {/* Divider */}
-            <div className="border-t border-gray-200 my-2" />
+                        <div className="p-2 flex items-center justify-between gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsSettingsOpen((v) => !v)}
+                                className="h-10 w-10 rounded-xl flex items-center justify-center text-gray-700 hover:bg-gray-100 transition-colors"
+                                title="Style"
+                                aria-label="Style"
+                            >
+                                <SlidersHorizontal size={18} />
+                            </button>
 
-            {/* Size Slider */}
-            <div className="flex flex-col items-center gap-1 px-1">
-                <span className="text-xs text-gray-500">Size</span>
-                <input
-                    type="range"
-                    min="1"
-                    max="20"
-                    value={size}
-                    onChange={(e) => onSizeChange(parseInt(e.target.value))}
-                    className="w-full h-1 accent-green-600"
-                />
-                <span className="text-xs text-gray-600 font-medium">{size}px</span>
+                            <button
+                                type="button"
+                                onClick={() => setIsSettingsOpen(true)}
+                                className="h-10 w-10 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors"
+                                title="Current color"
+                                aria-label="Current color"
+                            >
+                                <span
+                                    className="h-6 w-6 rounded-full ring-2 ring-white shadow-sm border border-gray-200"
+                                    style={{ backgroundColor: color }}
+                                />
+                            </button>
+                        </div>
+
+                        {isSettingsOpen && (
+                            <>
+                                <div className="h-px bg-gray-200" />
+                                <div className="p-3 w-[104px]">
+                                    <div className="grid grid-cols-4 gap-2 mb-3">
+                                        {PRESET_COLORS.map((presetColor) => (
+                                            <button
+                                                key={presetColor}
+                                                type="button"
+                                                onClick={() => onColorChange(presetColor)}
+                                                className={[
+                                                    "h-5 w-5 rounded-full transition-transform",
+                                                    color === presetColor
+                                                        ? "ring-2 ring-green-500 ring-offset-1 ring-offset-white"
+                                                        : "hover:scale-110",
+                                                ].join(" ")}
+                                                style={{ backgroundColor: presetColor }}
+                                                title={presetColor}
+                                                aria-label={presetColor}
+                                            />
+                                        ))}
+                                    </div>
+
+                                    <input
+                                        type="color"
+                                        value={color}
+                                        onChange={(e) => onColorChange(e.target.value)}
+                                        className="w-full h-8 cursor-pointer rounded-lg border border-gray-200 bg-white"
+                                        title="Custom color"
+                                        aria-label="Custom color"
+                                    />
+
+                                    <div className="mt-3">
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="20"
+                                            value={size}
+                                            onChange={(e) => onSizeChange(parseInt(e.target.value))}
+                                            className="w-full h-1 accent-green-600"
+                                            aria-label="Size"
+                                        />
+                                        <div className="mt-1 text-[11px] text-gray-600 text-center">
+                                            {size}px
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     );

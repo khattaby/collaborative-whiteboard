@@ -80,12 +80,6 @@ export class ErrorBoundary extends Component<
     }
 }
 
-// Hook-based error boundary wrapper for easier use
-interface UseErrorBoundaryReturn {
-    ErrorBoundaryWrapper: React.FC<{ children: ReactNode }>;
-    resetError: () => void;
-}
-
 export function withErrorBoundary<P extends object>(
     Component: React.ComponentType<P>,
     fallback?: ReactNode

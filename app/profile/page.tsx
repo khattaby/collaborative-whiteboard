@@ -2,11 +2,17 @@ import { auth, signOut } from "@/auth";
 import { prisma } from "@/auth";
 import { redirect } from "next/navigation";
 import { updateProfileImage, removeProfileImage } from "./actions";
+import type { Session } from "next-auth";
 
 export const runtime = "nodejs";
 
 export default async function ProfilePage() {
-  const session = await auth();
+  let session: Session | null = null;
+  try {
+    session = await auth();
+  } catch {
+    session = null;
+  }
 
   if (!session?.user?.email) {
     redirect("/signin");

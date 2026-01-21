@@ -4,8 +4,17 @@ import { useActionState, useEffect } from "react";
 import { createSession } from "@/app/actions/session-actions";
 import { useRouter } from "next/navigation";
 import { io } from "socket.io-client";
+import type { Friend } from "@/lib/whiteboard/types";
 
-export default function CreateSessionForm({ friends }: { friends: any[] }) {
+interface FriendListItem {
+  friend: Friend;
+}
+
+export default function CreateSessionForm({
+  friends,
+}: {
+  friends: FriendListItem[];
+}) {
   const [state, action, isPending] = useActionState(createSession, null);
   const router = useRouter();
 
@@ -87,7 +96,7 @@ export default function CreateSessionForm({ friends }: { friends: any[] }) {
                       {f.friend.image ? (
                         <img
                           src={f.friend.image}
-                          alt={f.friend.name}
+                          alt={f.friend.name ?? "Friend"}
                           className="w-8 h-8 rounded-full"
                         />
                       ) : (

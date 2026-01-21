@@ -119,7 +119,7 @@ export interface ClientToServerEvents {
     "session-ended": (data: { sessionId: string }) => void;
     "kick-user": (data: { userId: string; sessionId: string }) => void;
     "user-left": (data: { userId: string; sessionId: string }) => void;
-    "send-invite": (data: { toUserIds: string[]; session: { id: string; name: string } }) => void;
+    "send-invite": (data: { toUserIds: string[]; session: { id: string; name: string; creator: SessionUser } }) => void;
     "send-friend-request": (data: { toUserId: string; request: unknown }) => void;
     "accept-friend-request": (data: { toUserId: string; friendship: unknown }) => void;
     "remove-friend": (data: { toUserId: string; removedByUserId: string }) => void;

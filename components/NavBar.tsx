@@ -3,13 +3,43 @@ import { prisma } from "@/auth";
 import Link from "next/link";
 import Image from "next/image";
 import NotificationDropdown from "./NotificationDropdown";
+import type { Session } from "next-auth";
+
+type PendingFriendRequest = {
+  id: string;
+  sender: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  };
+};
+
+type PendingSessionInvite = {
+  session: {
+    id: string;
+    name: string;
+    creator: {
+      id: string;
+      name: string | null;
+      email: string | null;
+      image: string | null;
+    };
+  };
+  status: string;
+};
 
 export default async function NavBar() {
-  const session = await auth();
+  let session: Session | null = null;
+  try {
+    session = await auth();
+  } catch {
+    session = null;
+  }
   let userImage = session?.user?.image;
   let userName = session?.user?.name;
-  let pendingRequests: any[] = [];
-  let pendingSessionInvites: any[] = [];
+  let pendingRequests: PendingFriendRequest[] = [];
+  let pendingSessionInvites: PendingSessionInvite[] = [];
 
   if (session?.user?.email) {
     const dbUser = await prisma.user.findUnique({
